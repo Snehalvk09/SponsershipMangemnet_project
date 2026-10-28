@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sponsorship Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="hero-section">
+    <div class="overlay">
+      <h1 class="title">🎉 Sponsorship Management System</h1>
+      <p class="subtitle">Connect Events with Sponsors — Seamlessly & Professionally</p>
+      <div class="buttons">
+        <button onclick="window.location.href='admin.html'">👩‍💼 Admin Login</button>
+        <button onclick="window.location.href='sponsor.html'">🤝 Sponsor Portal</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="events-section">
+      <h2>Upcoming Events</h2>
+      <div id="events-list" class="event-grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 Sponsorship Management </p>
+  </footer>
+
+  <script>
+    async function loadEvents() {
+      const res = await fetch("/api/events");
+      const events = await res.json();
+
+      const list = document.getElementById("events-list");
+      list.innerHTML = "";
+
+      events.forEach(e => {
+        const card = document.createElement("div");
+        card.className = "event-card";
+        card.innerHTML = `
+          <h3>${e.name}</h3>
+          <p><strong>Date:</strong> ${e.date}</p>
+          <p><strong>Location:</strong> ${e.location}</p>
+          <p>${e.description}</p>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    loadEvents();
+  </script>
+</body>
+</html>

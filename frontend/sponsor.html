@@ -1,0 +1,207 @@
+<!-- frontend/sponsor.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sponsor Portal • Sponsorship Management</title>
+  <style>
+    :root{
+      --primary:#007bff;
+      --accent:#00bfff;
+      --muted:#6b7280;
+      --card:#fff;
+      --bg:#f4f8fb;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Poppins, sans-serif;background:var(--bg);margin:0;color:#111}
+    header{background:linear-gradient(90deg,var(--primary),var(--accent));padding:18px 24px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+    header h1{font-size:1.2rem;margin:0}
+    header .nav{display:flex;gap:10px}
+    header button{background:#fff;color:var(--primary);border:none;padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer}
+    .wrap{max-width:1100px;margin:26px auto;padding:0 16px}
+    .grid{display:grid;grid-template-columns:1fr 380px;gap:24px}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(16,24,40,0.06)}
+    .event-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+    .event-card{padding:14px;border-radius:10px;border:1px solid #eef2ff;background:linear-gradient(180deg,#fff,#f8fbff);display:flex;flex-direction:column;gap:10px}
+    .event-card h3{color:var(--primary);margin:0;font-size:1rem}
+    .event-card p{margin:0;color:var(--muted);font-size:0.9rem}
+    .event-card small{color:#374151}
+    .btn{background:var(--primary);color:#fff;padding:8px 10px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+    .btn.ghost{background:#eef2ff;color:var(--primary);border:1px solid #dbeafe}
+    .sidebar .label{font-size:0.9rem;color:var(--muted);margin-bottom:8px}
+    input,textarea,select{width:100%;padding:10px;border:1px solid #e6eefc;border-radius:8px;margin-bottom:10px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #f1f5f9;text-align:left}
+    th{background:#f8fafc;color:#111}
+    .status-Pending{color:orange;font-weight:700}
+    .status-Accepted{color:green;font-weight:700}
+    .status-Rejected{color:red;font-weight:700}
+    footer{text-align:center;margin:30px 0;color:var(--muted)}
+    @media(max-width:900px){.grid{grid-template-columns:1fr} .sidebar{order:2}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sponsorship Management — Sponsor Portal</h1>
+    <div class="nav">
+      <button onclick="location.href='index.html'">Home</button>
+      <button onclick="location.href='admin.html'">Admin</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="grid">
+      <!-- left: events -->
+      <div>
+        <div class="card">
+          <h2 style="margin:0 0 10px 0">Available Events</h2>
+          <div id="events" class="event-list">
+            <!-- event cards -->
+            <div>Loading events…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- right: request form + my requests -->
+      <aside class="sidebar">
+        <div class="card">
+          <div class="label">Your Name</div>
+          <input id="sponsorName" placeholder="Enter your name (saved locally)" />
+          <div class="label">Message for Organizer</div>
+          <textarea id="message" rows="4" placeholder="Write a short message..."></textarea>
+          <div style="display:flex;gap:8px">
+            <button id="quickSend" class="btn">Send Request (select event below)</button>
+            <button id="saveName" class="btn ghost">Save Name</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <h3 style="margin:0 0 8px 0">My Requests</h3>
+          <div style="margin-bottom:8px;color:var(--muted)">Enter your name and click Load to view your requests</div>
+          <div style="display:flex;gap:8px">
+            <input id="filterName" placeholder="Your name" />
+            <button id="loadMy" class="btn ghost">Load</button>
+          </div>
+          <div style="margin-top:10px;max-height:320px;overflow:auto">
+            <table id="myRequests">
+              <thead><tr><th>Event</th><th>Message</th><th>Status</th></tr></thead>
+              <tbody><tr><td colspan="3" style="text-align:center;color:var(--muted)">No requests loaded</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <footer>© 2025 Sponsorship Management</footer>
+
+  <script>
+    // helper
+    const api = (path, opts) => fetch(path, opts).then(r=>r.json());
+
+    // load events
+    async function loadEvents() {
+      const list = document.getElementById('events');
+      try {
+        const events = await api('/api/events');
+        list.innerHTML = '';
+        events.forEach(ev => {
+          const card = document.createElement('div');
+          card.className = 'event-card';
+          card.innerHTML = `
+            <h3>${ev.name}</h3>
+            <p><small>${ev.location} • ${ev.date}</small></p>
+            <p>${(ev.description||'No details')}</p>
+            <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn ghost" onclick="openRequest(${ev.id}, '${escapeHtml(ev.name)}')">Request</button>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      } catch(e){
+        list.innerHTML = '<div style="color:red">Failed to load events</div>';
+        console.error(e);
+      }
+    }
+
+    // small escape to show names in prompt safely
+    function escapeHtml(s){ return (s||'').replace(/'/g,"\\'"); }
+
+    // request flow
+    let lastEventId = null;
+    function openRequest(eventId, eventNameEsc) {
+      lastEventId = eventId;
+      const sponsor = document.getElementById('sponsorName').value.trim() || localStorage.getItem('sponsorName') || '';
+      const name = prompt('Enter sponsor name:', sponsor) || '';
+      if(!name) return;
+      document.getElementById('sponsorName').value = name;
+      const message = document.getElementById('message').value.trim() || prompt('Enter a short message for the organizer:','I would like to sponsor '+eventNameEsc) || '';
+      if(!message) return;
+      sendRequest(lastEventId, name, message);
+    }
+
+    async function sendRequest(eventId, sponsorName, message){
+      try {
+        const res = await api('/api/request', {
+          method:'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ event_id: eventId, sponsor_name: sponsorName, message })
+        });
+        alert(res.message || 'Request submitted');
+        // save name locally for convenience
+        localStorage.setItem('sponsorName', sponsorName);
+        loadMyRequests(sponsorName);
+      } catch(e){
+        alert('Failed to send request');
+        console.error(e);
+      }
+    }
+
+    // my requests loader
+    async function loadMyRequests(name){
+      if(!name) {
+        alert('Please enter your name in "Load" field');
+        return;
+      }
+      const tbody = document.querySelector('#myRequests tbody');
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Loading…</td></tr>';
+      try {
+        const data = await api('/api/sponsor/'+encodeURIComponent(name));
+        if(!data.length) {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted)">No requests found</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.map(r=>`<tr>
+          <td>${r.event_name}</td>
+          <td>${r.message}</td>
+          <td class="status-${r.status}">${r.status}</td>
+        </tr>`).join('');
+      } catch(e){
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:red">Error</td></tr>';
+        console.error(e);
+      }
+    }
+
+    // quick buttons
+    document.getElementById('loadMy').addEventListener('click', ()=> {
+      const name = document.getElementById('filterName').value.trim();
+      loadMyRequests(name);
+    });
+    document.getElementById('saveName').addEventListener('click', ()=>{
+      const val = document.getElementById('sponsorName').value.trim();
+      if(!val) return alert('Enter a name to save');
+      localStorage.setItem('sponsorName', val);
+      alert('Saved');
+    });
+
+    // init
+    (function(){
+      const saved = localStorage.getItem('sponsorName');
+      if(saved) document.getElementById('sponsorName').value = saved, document.getElementById('filterName').value = saved;
+      loadEvents();
+      if(saved) loadMyRequests(saved);
+    })();
+  </script>
+</body>
+</html>
